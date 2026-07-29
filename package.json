@@ -1,0 +1,21 @@
+{
+    "name": "kata-typescript",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "license": "MIT",
+    "scripts": {
+        "generate": "tsx scripts/generate.ts",
+        "clear": "tsx scripts/clear.ts",
+        "day": "echo src/day1",
+        "test": "vitest run",
+        "prettier": "prettier --write . --ignore-unknown"
+    },
+    "devDependencies": {
+        "@types/node": "^24.1.0",
+        "prettier": "^3.6.2",
+        "tsx": "^4.20.3",
+        "typescript": "^5.9.2",
+        "vitest": "^3.2.4"
+    }
+}

@@ -1,0 +1,35 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineConfig } from "vitest/config";
+
+import ligmaConfig from "./ligma.config";
+
+const root = path.dirname(fileURLToPath(import.meta.url));
+const src = path.join(root, "src");
+
+function latestDay(): string {
+    const days = readdirSync(src, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => /^day(\d+)$/.exec(entry.name))
+        .filter((match): match is RegExpExecArray => match !== null)
+        .sort((a, b) => Number(b[1]) - Number(a[1]));
+
+    return days[0]?.[0] ?? "day1";
+}
+
+const testFiles = [...new Set(ligmaConfig.dsa)].map(
+    (name) => `src/__tests__/${name}.ts`,
+);
+
+export default defineConfig({
+    test: {
+        globals: true,
+        include: testFiles,
+    },
+    resolve: {
+        alias: {
+            "@code": path.join(src, latestDay()),
+        },
+    },
+});
