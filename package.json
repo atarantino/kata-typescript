@@ -5,9 +5,10 @@
     "type": "module",
     "license": "MIT",
     "scripts": {
-        "generate": "tsx scripts/generate.ts",
+        "generate": "node --import tsx scripts/generate.ts",
+        "due": "tsx scripts/due.ts",
         "clear": "tsx scripts/clear.ts",
-        "day": "echo src/day1",
+        "day": "echo src/day2",
         "test": "vitest run",
         "prettier": "prettier --write . --ignore-unknown"
     },

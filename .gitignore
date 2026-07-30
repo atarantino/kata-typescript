@@ -1,2 +1,7 @@
 node_modules
 dist
+.env
+
+# personal practice data — each clone generates its own days
+src/day*
+stats.json

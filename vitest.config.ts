@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
@@ -18,9 +18,10 @@ function latestDay(): string {
     return days[0]?.[0] ?? "day1";
 }
 
-const testFiles = [...new Set(ligmaConfig.dsa)].map(
-    (name) => `src/__tests__/${name}.ts`,
-);
+const day = latestDay();
+const testFiles = [...new Set(ligmaConfig.dsa)]
+    .filter((name) => existsSync(path.join(src, day, `${name}.ts`)))
+    .map((name) => `src/__tests__/${name}.ts`);
 
 export default defineConfig({
     test: {
@@ -29,7 +30,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            "@code": path.join(src, latestDay()),
+            "@code": path.join(src, day),
         },
     },
 });

@@ -32,6 +32,22 @@ const scriptsPath = path.dirname(fileURLToPath(import.meta.url));
 const rootPath = path.join(scriptsPath, "..");
 const srcPath = path.join(rootPath, "src");
 
+const requestedNames = [...new Set(process.argv.slice(2))];
+const validNames = Object.keys(dsa) as (keyof typeof dsa)[];
+const validNameSet = new Set<string>(validNames);
+const unknownNames = requestedNames.filter((name) => !validNameSet.has(name));
+
+if (unknownNames.length > 0) {
+    console.error(`Unknown kata name(s): ${unknownNames.join(", ")}`);
+    console.error(`Valid kata names: ${validNames.join(", ")}`);
+    process.exit(1);
+}
+
+const names =
+    requestedNames.length > 0
+        ? (requestedNames as (keyof typeof dsa)[])
+        : config.dsa;
+
 const previousDay = readdirSync(srcPath, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => /^day(\d+)$/.exec(entry.name))
@@ -86,7 +102,7 @@ function createFunction(name: string, item: FunctionSpec): void {
     );
 }
 
-for (const name of config.dsa) {
+for (const name of names) {
     const item = dsa[name];
 
     if (item.type === "class") {
@@ -100,11 +116,22 @@ const tsconfigPath = path.join(rootPath, "tsconfig.json");
 const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8")) as TsConfig;
 tsconfig.compilerOptions.paths["@code/*"] = [`${dayName}/*`];
 
-const configuredTests = new Set(config.dsa.map((name) => `${name}.ts`));
+const configuredTests = new Set(names.map((name) => `${name}.ts`));
 const excludedTests = readdirSync(path.join(srcPath, "__tests__"))
     .filter((name) => name.endsWith(".ts") && !configuredTests.has(name))
     .map((name) => `src/__tests__/${name}`);
-tsconfig.exclude = ["node_modules", "dist", ...excludedTests];
+const excludedDays =
+    requestedNames.length > 0
+        ? readdirSync(srcPath, { withFileTypes: true })
+              .filter(
+                  (entry) =>
+                      entry.isDirectory() &&
+                      /^day\d+$/.test(entry.name) &&
+                      entry.name !== dayName,
+              )
+              .map((entry) => `src/${entry.name}`)
+        : [];
+tsconfig.exclude = ["node_modules", "dist", ...excludedDays, ...excludedTests];
 
 writeFileSync(tsconfigPath, `${JSON.stringify(tsconfig, null, 4)}\n`);
 
@@ -113,7 +140,7 @@ const stats = existsSync(statsPath)
     ? (JSON.parse(readFileSync(statsPath, "utf8")) as Record<string, number>)
     : {};
 
-for (const name of config.dsa) {
+for (const name of names) {
     stats[name] = (stats[name] ?? 0) + 1;
 }
 
