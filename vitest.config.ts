@@ -22,6 +22,7 @@ const day = latestDay();
 const testFiles = [...new Set(ligmaConfig.dsa)]
     .filter((name) => existsSync(path.join(src, day, `${name}.ts`)))
     .map((name) => `src/__tests__/${name}.ts`);
+testFiles.push("scripts/__tests__/due.test.ts");
 
 export default defineConfig({
     test: {
