@@ -157,17 +157,17 @@ export function scheduleKatas(
                 if (attempt.r === "instant") {
                     interval =
                         interval === 0
-                            ? 2
+                            ? 7
                             : Math.min(
-                                  365,
-                                  Math.max(2, Math.round(interval * ease)),
+                                  180,
+                                  Math.max(7, Math.round(interval * ease)),
                               );
                     ease = Math.min(3, ease + 0.05);
                 } else if (attempt.r === "slow") {
-                    interval = Math.max(1, Math.round(interval * 1.2));
+                    interval = Math.max(3, Math.round(interval * 1.2));
                     ease = Math.max(1.3, ease - 0.1);
                 } else if (attempt.r === "blank") {
-                    interval = 1;
+                    interval = 2;
                     ease = Math.max(1.3, ease - 0.25);
                 }
 
