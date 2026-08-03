@@ -8,10 +8,10 @@
         "noImplicitReturns": true,
         "resolveJsonModule": true,
         "esModuleInterop": true,
-        "baseUrl": "src",
+        "skipLibCheck": true,
         "paths": {
             "@code/*": [
-                "day2/*"
+                "./src/day1/*"
             ]
         },
         "types": [
@@ -28,13 +28,34 @@
     "exclude": [
         "node_modules",
         "dist",
+        "src/__tests__/ArrayList.ts",
         "src/__tests__/BFSGraphList.ts",
+        "src/__tests__/BFSGraphMatrix.ts",
+        "src/__tests__/BTBFS.ts",
+        "src/__tests__/BTInOrder.ts",
+        "src/__tests__/BTPostOrder.ts",
+        "src/__tests__/BTPreOrder.ts",
+        "src/__tests__/BubbleSort.ts",
+        "src/__tests__/CompareBinaryTrees.ts",
+        "src/__tests__/DFSGraphList.ts",
+        "src/__tests__/DFSOnBST.ts",
         "src/__tests__/DijkstraList.ts",
+        "src/__tests__/DoublyLinkedList.ts",
         "src/__tests__/InsertionSort.ts",
+        "src/__tests__/LRU.ts",
         "src/__tests__/ListTest.ts",
+        "src/__tests__/Map.ts",
+        "src/__tests__/MazeSolver.ts",
         "src/__tests__/MergeSort.ts",
+        "src/__tests__/MinHeap.ts",
         "src/__tests__/PrimsList.ts",
+        "src/__tests__/Queue.ts",
+        "src/__tests__/QuickSort.ts",
         "src/__tests__/RingBuffer.ts",
+        "src/__tests__/SinglyLinkedList.ts",
+        "src/__tests__/Stack.ts",
+        "src/__tests__/Trie.ts",
+        "src/__tests__/TwoCrystalBalls.ts",
         "src/__tests__/graph.ts",
         "src/__tests__/tree.ts"
     ]
