@@ -2,6 +2,6 @@ node_modules
 dist
 .env
 
-# personal practice data — each clone generates its own days
-src/day*
+# personal practice data — each clone generates its own session
+src/current
 stats.json

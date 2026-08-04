@@ -1,16 +1,18 @@
-import { readdirSync, rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { archiveCurrent } from "./archive";
+
 const scriptsPath = path.dirname(fileURLToPath(import.meta.url));
 const srcPath = path.join(scriptsPath, "..", "src");
+const currentPath = path.join(srcPath, "current");
 
-for (const entry of readdirSync(srcPath, { withFileTypes: true })) {
-    if (!entry.isDirectory() || !entry.name.startsWith("day")) {
-        continue;
-    }
+if (!process.argv.includes("--no-archive")) {
+    archiveCurrent();
+}
 
-    const dayPath = path.join(srcPath, entry.name);
-    console.log("deleting", dayPath);
-    rmSync(dayPath, { recursive: true, force: true });
+if (existsSync(currentPath)) {
+    console.log("deleting", currentPath);
+    rmSync(currentPath, { recursive: true, force: true });
 }

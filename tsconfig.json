@@ -11,7 +11,7 @@
         "skipLibCheck": true,
         "paths": {
             "@code/*": [
-                "./src/day1/*"
+                "./src/current/*"
             ]
         },
         "types": [
