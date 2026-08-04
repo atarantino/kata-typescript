@@ -3,6 +3,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import config from "../ligma.config";
+
 interface Kata {
     id: string | number;
     kind: string;
@@ -18,6 +20,7 @@ interface Attempt {
 interface SyncState {
     katas?: unknown;
     klog?: unknown;
+    newPerDay?: unknown;
 }
 
 interface ScheduledKata {
@@ -129,23 +132,89 @@ function isAttempt(value: unknown): value is Attempt {
     );
 }
 
+/**
+ * How many unseen katas may still be introduced today.
+ *
+ * Without this every unattempted kata reports due at once, which on a fresh
+ * seed means all 23 — the cold-start pile that spaced repetition exists to
+ * avoid. New forms are introduced a couple per day instead, and only after
+ * the day's reviews are already counted.
+ */
+function newAllowance(
+    katas: Kata[],
+    attempts: Attempt[],
+    today: string,
+    newPerDay: number,
+): number {
+    const introducedToday = katas.filter((kata) => {
+        const dates = attempts
+            .filter((attempt) => attempt.kid === kata.id)
+            .map((attempt) => attempt.d)
+            .sort();
+
+        return dates.length > 0 && dates[0] === today;
+    }).length;
+
+    return Math.max(0, newPerDay - introducedToday);
+}
+
+/**
+ * Position in `ligma.config.ts`, so new forms are introduced in a deliberate
+ * sequence rather than whatever order the app happened to seed. Reorder that
+ * list to change the ramp. Duplicates take their first position; anything
+ * missing from it sorts to the end.
+ */
+function curriculumRank(order: string[]): (name: string) => number {
+    const positions = new Map<string, number>();
+
+    order.forEach((name, index) => {
+        if (!positions.has(name)) {
+            positions.set(name, index);
+        }
+    });
+
+    return (name) => positions.get(name) ?? Number.MAX_SAFE_INTEGER;
+}
+
 export function scheduleKatas(
     katas: Kata[],
     attempts: Attempt[],
     today = formatLocalDate(new Date()),
+    newPerDay = 2,
+    order: string[] = config.dsa,
 ): ScheduledKata[] {
+    const rankOf = curriculumRank(order);
+    const hasAttempt = (kata: Kata) =>
+        attempts.some((attempt) => attempt.kid === kata.id);
+
+    const introduced = new Set(
+        katas
+            .filter((kata) => !hasAttempt(kata))
+            .sort(
+                (a, b) =>
+                    rankOf(a.dsa!) - rankOf(b.dsa!) ||
+                    a.dsa!.localeCompare(b.dsa!),
+            )
+            .slice(0, newAllowance(katas, attempts, today, newPerDay))
+            .map((kata) => kata.id),
+    );
+
     return katas
         .map((kata) => {
+            const curriculumIndex = rankOf(kata.dsa!);
             const kataAttempts = attempts
                 .filter((attempt) => attempt.kid === kata.id)
                 .sort((a, b) => a.d.localeCompare(b.d));
 
             if (kataAttempts.length === 0) {
+                const introduce = introduced.has(kata.id);
+
                 return {
                     name: kata.dsa!,
-                    due: true,
+                    due: introduce,
                     overdueDays: 0,
-                    status: "new",
+                    status: introduce ? "new" : "queued",
+                    curriculumIndex,
                 };
             }
 
@@ -189,14 +258,29 @@ export function scheduleKatas(
                 dueDate,
                 overdueDays,
                 status,
+                curriculumIndex,
             };
         })
         .sort(
             (a, b) =>
+                rank(a) - rank(b) ||
                 b.overdueDays - a.overdueDays ||
                 (a.dueDate ?? today).localeCompare(b.dueDate ?? today) ||
+                a.curriculumIndex - b.curriculumIndex ||
                 a.name.localeCompare(b.name),
-        );
+        )
+        .map(({ curriculumIndex: _curriculumIndex, ...item }) => item);
+}
+
+/**
+ * Work to do first, then what's scheduled, then the not-yet-introduced tail.
+ */
+function rank(item: { due: boolean; status: string }): number {
+    if (item.due) {
+        return 0;
+    }
+
+    return item.status === "queued" ? 2 : 1;
 }
 
 function printTable(schedule: ScheduledKata[]): void {
@@ -210,6 +294,70 @@ function printTable(schedule: ScheduledKata[]): void {
     for (const item of schedule) {
         console.log(`${item.name.padEnd(nameWidth)}  ${item.status}`);
     }
+}
+
+/**
+ * Show today's work, then summarize the rest. `--all` prints everything.
+ */
+function printSchedule(
+    schedule: ScheduledKata[],
+    showAll: boolean,
+    newPerDay: number,
+): void {
+    const due = schedule.filter((item) => item.due);
+
+    if (showAll) {
+        printTable(schedule);
+        console.log(`\n${due.length} of ${schedule.length} due`);
+        return;
+    }
+
+    if (due.length === 0) {
+        console.log("Nothing is due today.");
+    } else {
+        printTable(due);
+    }
+
+    const scheduled = schedule.filter(
+        (item) => !item.due && item.status !== "queued",
+    );
+    const queued = schedule.filter((item) => item.status === "queued");
+    const rest: string[] = [];
+
+    if (scheduled.length > 0) {
+        rest.push(`${scheduled.length} scheduled`);
+    }
+
+    if (queued.length > 0) {
+        rest.push(`${queued.length} not started (${newPerDay} new per day)`);
+    }
+
+    if (rest.length > 0) {
+        console.log(`\n${rest.join(", ")} — run with --all to see them`);
+    }
+}
+
+/**
+ * `--new <n>` for a one-off change of pace, otherwise whatever the app is set
+ * to, otherwise the app's own default.
+ */
+function readNewPerDay(args: string[], synced: unknown): number {
+    const flag = args.indexOf("--new");
+
+    if (flag !== -1) {
+        const override = Number(args[flag + 1]);
+
+        if (Number.isInteger(override) && override >= 0) {
+            return override;
+        }
+
+        console.error("--new needs a whole number, e.g. --new 5");
+        process.exitCode = 1;
+    }
+
+    return typeof synced === "number" && Number.isInteger(synced) && synced >= 0
+        ? synced
+        : EMPTY_STATE.newPerDay;
 }
 
 async function loadState(key: string): Promise<SyncState> {
@@ -294,15 +442,21 @@ async function main(): Promise<void> {
     const attempts = Array.isArray(state.klog)
         ? state.klog.filter(isAttempt)
         : [];
-    const schedule = scheduleKatas(katas, attempts);
+    const args = process.argv.slice(2);
+    const newPerDay = readNewPerDay(args, state.newPerDay);
+    const schedule = scheduleKatas(
+        katas,
+        attempts,
+        formatLocalDate(new Date()),
+        newPerDay,
+    );
     const dueNames = schedule
         .filter((item) => item.due)
         .map((item) => item.name);
 
-    printTable(schedule);
-    console.log(`\n${dueNames.length} of ${schedule.length} due`);
+    printSchedule(schedule, args.includes("--all"), newPerDay);
 
-    if (!process.argv.slice(2).includes("--generate")) {
+    if (!args.includes("--generate")) {
         return;
     }
 

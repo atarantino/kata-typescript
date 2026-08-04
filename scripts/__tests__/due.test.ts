@@ -57,6 +57,79 @@ describe("scheduleKatas", () => {
         ]);
     });
 
+    test("introduces only newPerDay unseen katas, in curriculum order", () => {
+        // Seeded in a jumbled order; introduced in the configured one.
+        const katas = [
+            kata("a", "QuickSort"),
+            kata("b", "BinarySearchList"),
+            kata("c", "LinearSearchList"),
+            kata("d", "BubbleSort"),
+        ];
+        const order = [
+            "LinearSearchList",
+            "BinarySearchList",
+            "BubbleSort",
+            "QuickSort",
+        ];
+
+        const schedule = scheduleKatas(katas, [], "2026-01-20", 2, order);
+
+        expect(schedule.map((item) => [item.name, item.status])).toEqual([
+            ["LinearSearchList", "new"],
+            ["BinarySearchList", "new"],
+            ["BubbleSort", "queued"],
+            ["QuickSort", "queued"],
+        ]);
+        expect(schedule.filter((item) => item.due)).toHaveLength(2);
+    });
+
+    test("katas missing from the curriculum are introduced last", () => {
+        const katas = [kata("a", "RingBuffer"), kata("b", "BubbleSort")];
+
+        const schedule = scheduleKatas(katas, [], "2026-01-20", 1, [
+            "BubbleSort",
+        ]);
+
+        expect(schedule.map((item) => [item.name, item.status])).toEqual([
+            ["BubbleSort", "new"],
+            ["RingBuffer", "queued"],
+        ]);
+    });
+
+    test("today's introductions count against the new allowance", () => {
+        const katas = [
+            kata("a", "LinearSearchList"),
+            kata("b", "BinarySearchList"),
+            kata("c", "BubbleSort"),
+        ];
+        // LinearSearchList was already introduced today, so only one of the
+        // two remaining unseen katas may follow it.
+        const attempts = [{ kid: "a", d: "2026-01-20", r: "slow" }];
+        const order = ["LinearSearchList", "BinarySearchList", "BubbleSort"];
+
+        const schedule = scheduleKatas(katas, attempts, "2026-01-20", 2, order);
+        const statuses = new Map(
+            schedule.map((item) => [item.name, item.status]),
+        );
+
+        expect(statuses.get("BinarySearchList")).toBe("new");
+        expect(statuses.get("BubbleSort")).toBe("queued");
+    });
+
+    test("reviews still come due when the new allowance is spent", () => {
+        const katas = [kata("a", "QuickSort"), kata("b", "MinHeap")];
+        const attempts = [{ kid: "a", d: "2026-01-01", r: "blank" }];
+
+        const schedule = scheduleKatas(katas, attempts, "2026-01-20", 0);
+
+        expect(
+            schedule.map((item) => [item.name, item.due, item.status]),
+        ).toEqual([
+            ["QuickSort", true, "17d overdue"],
+            ["MinHeap", false, "queued"],
+        ]);
+    });
+
     test("caps the drill interval at 180 days", () => {
         // Intervals: 7, 18, 47, 125, then 125 * 2.7 = 338 capped to 180.
         const attempts = [

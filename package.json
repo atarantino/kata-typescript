@@ -7,8 +7,9 @@
     "scripts": {
         "generate": "node --import tsx scripts/generate.ts",
         "due": "tsx scripts/due.ts",
+        "archive": "tsx scripts/archive.ts",
         "clear": "tsx scripts/clear.ts",
-        "day": "echo src/day2",
+        "day": "echo src/current",
         "test": "vitest run",
         "prettier": "prettier --write . --ignore-unknown"
     },
